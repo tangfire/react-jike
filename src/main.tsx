@@ -6,6 +6,8 @@ import {
 import router from "@/router"
 import { Layout} from "antd";
 import { Content } from 'antd/es/layout/layout'
+import store from './store'
+import { Provider } from 'react-redux'
 
 
 
@@ -18,7 +20,9 @@ createRoot(document.getElementById('root')!).render(
               alignItems: 'center',
               padding: '20px'
           }}>
-             <RouterProvider router={router}></RouterProvider>
+             <Provider store={store}>
+                 <RouterProvider router={router}></RouterProvider>
+             </Provider>
           </Content>
       </Layout>
 
