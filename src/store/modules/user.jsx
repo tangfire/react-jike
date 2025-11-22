@@ -1,17 +1,18 @@
 // 和用户相关的状态管理
 import { createSlice } from '@reduxjs/toolkit'
 import {request} from "@/utils/request.jsx";
+import {setToken as _setToken,getToken} from "@/utils";
 
 export const userStore = createSlice({
     name: 'user',
     initialState: {
-        token: localStorage.getItem("token_key") || '',
+        token: getToken() || '',
     },
     reducers: {
         setToken: (state, action) => {
             state.token = action.payload
             // localstorage存一份
-            localStorage.setItem('token_key', action.payload)
+            _setToken(action.payload)
         }
     }
 })

@@ -1,5 +1,11 @@
 // 统一中转工具模块函数
 // import {request} from '@/utils'
-import {request} from 'request';
+import {request} from './request';
+import {getToken,setToken,removeToken} from './token.jsx'
 
-export {request};
+export {
+    request,
+    setToken,
+    removeToken,
+    getToken,
+};
