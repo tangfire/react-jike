@@ -3,13 +3,13 @@ import {
     DesktopOutlined,
     FileOutlined,
     PieChartOutlined,
-    TeamOutlined,
-    UserOutlined,
+
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import { Breadcrumb, Layout, Menu, theme } from 'antd';
+import { Breadcrumb, Layout, Menu} from 'antd';
+import { Outlet } from 'react-router-dom';
 
-const { Header, Content, Footer, Sider } = Layout;
+const {  Content, Sider } = Layout;
 
 type MenuItem = Required<MenuProps>['items'][number];
 
@@ -54,7 +54,8 @@ const App: React.FC = () => {
                             background: "white",
                         }}
                     >
-                        Bill is a cat.
+                        {/*二级路由的出口*/}
+                        <Outlet></Outlet>
                     </div>
                 </Content>
 

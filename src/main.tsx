@@ -3,9 +3,10 @@ import { createRoot } from 'react-dom/client'
 import {
     RouterProvider,
 } from "react-router"
+// @ts-ignore
 import router from "@/router"
-import { Layout} from "antd";
-import { Content } from 'antd/es/layout/layout'
+
+// @ts-ignore
 import store from './store'
 import { Provider } from 'react-redux'
 import 'normalize.css'

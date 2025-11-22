@@ -2,6 +2,7 @@ import React from 'react';
 import {type FormProps, Layout, message} from 'antd';
 import {Card, Button, Form, Input } from 'antd';
 import {useDispatch} from "react-redux";
+// @ts-ignore
 import {fetchLogin} from '@/store/modules/user'
 import {useNavigate} from "react-router-dom";
 import {Content} from "antd/es/layout/layout";
