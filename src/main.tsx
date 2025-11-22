@@ -8,23 +8,14 @@ import { Layout} from "antd";
 import { Content } from 'antd/es/layout/layout'
 import store from './store'
 import { Provider } from 'react-redux'
-
+import 'normalize.css'
 
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-      <Layout style={{ minHeight: '100vh' }}>
-          <Content style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: '20px'
-          }}>
-             <Provider store={store}>
-                 <RouterProvider router={router}></RouterProvider>
-             </Provider>
-          </Content>
-      </Layout>
+      <Provider store={store}>
+          <RouterProvider router={router}></RouterProvider>
+      </Provider>
 
 
   </StrictMode>,

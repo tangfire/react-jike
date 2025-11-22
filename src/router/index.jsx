@@ -1,17 +1,18 @@
-import Layout from '../pages/Layout';
+import Layout from '@pages/Layout/index.js';
 import Login from '../pages/Login/index.js';
 
 
 import { createBrowserRouter } from "react-router";
+import {AuthRoute} from "@/components/AuthRoute.jsx";
 
 const router = createBrowserRouter([
     {
         path: "/",
-        Component: Layout,
+        element: <AuthRoute><Layout/></AuthRoute>,
     },
     {
         path: "/login",
-        Component: Login,
+        element: <Login />,
     }
 ]);
 
