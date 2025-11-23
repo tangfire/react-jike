@@ -4,9 +4,9 @@ import Login from '../pages/Login/index.js';
 
 import { createBrowserRouter } from "react-router";
 import {AuthRoute} from "@/components/AuthRoute.jsx";
-import Home from "@/pages/Home/index.jsx";
+import Home from "@pages/Home/index.tsx";
 import Article from "@/pages/Article/index.jsx";
-import Publish from "@/pages/Publish/index.jsx";
+import Publish from "@pages/Publish/index.tsx";
 
 
 const router = createBrowserRouter([
