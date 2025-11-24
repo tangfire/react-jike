@@ -207,7 +207,7 @@ const Publish = () => {
                                     name="image"
                                     listType="picture-card"
                                     className="avatar-uploader"
-                                    showUploadList={false}
+                                    showUploadList={true}
                                     action="http://127.0.0.1:8001/v1/upload"
                                     beforeUpload={beforeUpload}
                                     onChange={handleFileChange}
