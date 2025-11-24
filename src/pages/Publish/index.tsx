@@ -131,18 +131,8 @@ const Publish = () => {
     const [loading, setLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState<string>();
 
-    const handleChange: UploadProps['onChange'] = (info) => {
-        if (info.file.status === 'uploading') {
-            setLoading(true);
-            return;
-        }
-        if (info.file.status === 'done') {
-            // Get this url from response in real world.
-            getBase64(info.file.originFileObj as FileType, (url) => {
-                setLoading(false);
-                setImageUrl(url);
-            });
-        }
+    const handleFileChange: UploadProps['onChange'] = () => {
+        console.log('正在上传中');
     };
 
     const uploadButton = (
@@ -214,13 +204,13 @@ const Publish = () => {
                                 <div style={{height:20}}></div>
 
                                 <Upload
-                                    name="avatar"
+                                    name="image"
                                     listType="picture-card"
                                     className="avatar-uploader"
                                     showUploadList={false}
-                                    action="https://660d2bd96ddfa2943b33731c.mockapi.io/api/upload"
+                                    action="http://127.0.0.1:8001/v1/upload"
                                     beforeUpload={beforeUpload}
-                                    onChange={handleChange}
+                                    onChange={handleFileChange}
                                 >
                                     {imageUrl ? (
                                         <img draggable={false} src={imageUrl} alt="avatar" style={{ width: '100%' }} />
