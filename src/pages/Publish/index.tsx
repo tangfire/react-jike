@@ -17,35 +17,23 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import './index.scss'
-import {useEffect, useState} from "react";
-import {getChannelAPI,createArticleAPI} from '@/apis/articles.jsx'
+
+import {useChannel} from "../../hooks/useChannel.tsx";
+import { useState} from "react";
+import {createArticleAPI} from '@/apis/articles.jsx'
 
 const layout = {
     labelCol: { span: 8 },
     wrapperCol: { span: 16 },
 };
-// 定义频道接口
-interface Channel {
-    id: number;
-    name: string;
-}
+
 
 const tailLayout = {
     wrapperCol: { offset: 8, span: 16 },
 };
 const Publish = () => {
-    const [channelList, setChannelList] = useState<Channel[]>([])
-
-    useEffect(() => {
-        // 1. 封装函数 在函数体内调用接口
-        const getChannelList = async ()=>{
-            const res = await getChannelAPI();
-            setChannelList(res.data.data.channels);
-        }
-        // 2. 调用函数
-        getChannelList();
-
-    },[])
+    // 获取频道列表
+    const {channelList} = useChannel();
 
     const [form] = Form.useForm();
 
@@ -66,6 +54,9 @@ const Publish = () => {
 
     // 提交表单
     const onFinish = (values: any) => {
+        if (imageList.length !== imgValue) {
+            return message.warning('封面类型和图片数量不匹配')
+        }
         console.log(values);
         // 1. 按照接口文档的格式处理收集到的表单数据
         const {title,content,channel_id} = values;
@@ -73,8 +64,8 @@ const Publish = () => {
             title,
             content,
             cover:{
-                type:0,
-                images:[]
+                type:imgValue,
+                images:imageList.map(item =>item.response.data.url) // 图片列表
             },
             channel_id,
 
@@ -102,8 +93,9 @@ const Publish = () => {
         'link', 'image'
     ];
 
-    const [imgValue, setImgValue] = useState(1);
+    const [imgValue, setImgValue] = useState(0);
 
+    // 切换图片封面类型
     const onImageChange = (e: RadioChangeEvent) => {
         setImgValue(e.target.value);
     };
@@ -122,17 +114,14 @@ const Publish = () => {
         return isJpgOrPng && isLt2M;
     };
 
-    const getBase64 = (img: FileType, callback: (url: string) => void) => {
-        const reader = new FileReader();
-        reader.addEventListener('load', () => callback(reader.result as string));
-        reader.readAsDataURL(img);
-    };
 
     const [loading, setLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState<string>();
+    const [imageList, setImageList] = useState([])
 
-    const handleFileChange: UploadProps['onChange'] = () => {
-        console.log('正在上传中');
+    const handleFileChange: UploadProps['onChange'] = (value) => {
+        console.log('正在上传中',value);
+        setImageList(value.fileList)
     };
 
     const uploadButton = (
@@ -203,7 +192,7 @@ const Publish = () => {
 
                                 <div style={{height:20}}></div>
 
-                                <Upload
+                                {imgValue >0  && <Upload
                                     name="image"
                                     listType="picture-card"
                                     className="avatar-uploader"
@@ -211,13 +200,14 @@ const Publish = () => {
                                     action="http://127.0.0.1:8001/v1/upload"
                                     beforeUpload={beforeUpload}
                                     onChange={handleFileChange}
+                                    maxCount={imgValue}
                                 >
                                     {imageUrl ? (
                                         <img draggable={false} src={imageUrl} alt="avatar" style={{ width: '100%' }} />
                                     ) : (
                                         uploadButton
                                     )}
-                                </Upload>
+                                </Upload>}
                             </Form.Item>
 
                             <Form.Item label="内容" name="content" rules={[{ required: true ,message:'请输入文章内容'}]}>
