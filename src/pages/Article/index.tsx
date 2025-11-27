@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
     Button,
     Card,
@@ -16,9 +16,11 @@ import {
 import Column from "antd/es/table/Column";
 import { EditOutlined,DeleteOutlined } from '@ant-design/icons';
 import {useChannel} from "../../hooks/useChannel.tsx";
+import {getArticleListAPI} from "../../apis/articles.jsx";
+import dayjs from  "dayjs";
+
 
 const Article: React.FC = () => {
-    const style: React.CSSProperties = { background: '#0092ff', padding: '8px 0' };
     const {channelList} = useChannel();
 
     type FieldType = {
@@ -44,43 +46,51 @@ const Article: React.FC = () => {
         console.log(`selected ${value}`);
     };
 
+    // 状态映射
+    const statusMap = {
+        '1': { text: '草稿', color: 'default' },
+        '2': { text: '已发布', color: 'success' },
+        '3': { text: '已封禁', color: 'error' }
+    };
+
     const { RangePicker } = DatePicker;
 
-    interface DataType {
-        key: React.Key;
-        firstName: string;
-        lastName: string;
-        age: number;
-        address: string;
-        tags: string[];
-    }
+    const [count, setCount] = useState(0)
+    const [list, setList] = useState([])
+    useEffect(() => {
+        async function getList(){
+            const res = await getArticleListAPI()
+            const formList = res.data.data.list.map(item =>(
+                {
+                    ...item,
+                    key: item.id,
+                    // 格式化时间
+                    created_at: dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss'),
+                    // 处理封面图片显示
+                    cover_images: item.cover_images && item.cover_images.length > 0?item.cover_images.length : ['无封面'],
+                }
+            ));
+            setList(formList)
+            setCount(res.data.data.total)
+        }
+        getList();
 
-    const data: DataType[] = [
-        {
-            key: '1',
-            firstName: 'John',
-            lastName: 'Brown',
-            age: 32,
-            address: 'New York No. 1 Lake Park',
-            tags: ['nice', 'developer'],
-        },
-        {
-            key: '2',
-            firstName: 'Jim',
-            lastName: 'Green',
-            age: 42,
-            address: 'London No. 1 Lake Park',
-            tags: ['loser'],
-        },
-        {
-            key: '3',
-            firstName: 'Joe',
-            lastName: 'Black',
-            age: 32,
-            address: 'Sydney No. 1 Lake Park',
-            tags: ['cool', 'teacher'],
-        },
-    ];
+    },[])
+
+    // 筛选功能
+    // 1. 准备参数
+    const [reqData, setReqData] = useState({
+        status: '',
+        channel_id: '',
+        begin_pudata:'',
+        end_pudata:'',
+        page: 1,
+        per_page: 4,
+    })
+
+    // 2. 获取当前的筛选数据
+
+
     return(
     <Row gutter={[16, 24]}>
         <Col className="gutter-row" span={24}>
@@ -161,31 +171,25 @@ const Article: React.FC = () => {
             </Card>
         </Col>
         <Col className="gutter-row" span={24}>
-            <Card title="根据筛选条件查询到5条结果:"  style={{ width: '80%' ,margin: '0 auto' }}>
-                <Table<DataType> dataSource={data}>
+            <Card title={`根据筛选条件查询到${count}条数据`}  style={{ width: '80%' ,margin: '0 auto' }}>
+                <Table dataSource={list}>
                     <Column title="封面" dataIndex="cover_images" key="age" />
                     <Column title="标题" dataIndex="title" key="address" />
                     <Column
                         title="状态"
-                        dataIndex="tags"
-                        key="tags"
-                        render={(tags: string[]) => (
-                            <Flex gap="small" align="center" wrap>
-                                {tags.map((tag) => {
-                                    let color = tag.length > 5 ? 'geekblue' : 'green';
-                                    if (tag === 'loser') {
-                                        color = 'volcano';
-                                    }
-                                    return (
-                                        <Tag color={color} key={tag}>
-                                            {tag.toUpperCase()}
-                                        </Tag>
-                                    );
-                                })}
-                            </Flex>
-                        )}
+                        dataIndex="status"
+                        key="status"
+                        render={(status) => {
+                            // @ts-ignore
+                            const statusInfo = statusMap[status];
+                            return (
+                                <Tag color={statusInfo?.color || 'default'}>
+                                    {statusInfo?.text || '未知'}
+                                </Tag>
+                            );
+                        }}
                     />
-                    <Column title="发布时间" dataIndex="time" key="time" />
+                    <Column title="发布时间" dataIndex="created_at" key="time" />
                     <Column title="阅读数" dataIndex="view_count" key="view_count" />
                     <Column title="评论数" dataIndex="comment_count" key="comment_count" />
                     <Column title="点赞数" dataIndex="like_count" key="like_count" />

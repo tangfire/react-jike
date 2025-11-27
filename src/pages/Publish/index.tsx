@@ -4,8 +4,7 @@ import {
     Card,
     Col,
     Form, type GetProp,
-    Input,
-    message,
+    Input, message,
     Radio,
     type RadioChangeEvent,
     Row,
@@ -27,15 +26,47 @@ const layout = {
     wrapperCol: { span: 16 },
 };
 
-
 const tailLayout = {
     wrapperCol: { offset: 8, span: 16 },
 };
+
+// 定义类型
+interface ArticleFormData {
+    title: string;
+    content: string;
+    channel_id: number;
+    type: number;
+}
+
+interface CreateArticleRequest {
+    title: string;
+    content: string;
+    cover: {
+        type: number;
+        images: string[];
+    };
+    channel_id: number;
+}
+
+interface UploadFile {
+    uid: string;
+    status: 'uploading' | 'done' | 'error' | 'removed';
+    response?: {
+        data: {
+            url: string;
+        };
+    };
+    url?: string;
+}
+
 const Publish = () => {
     // 获取频道列表
     const {channelList} = useChannel();
-
     const [form] = Form.useForm();
+    const [messageApi, contextHolder] = message.useMessage();
+
+    // 添加状态来跟踪当前选择的封面类型
+    const [currentCoverType, setCurrentCoverType] = useState(0);
 
     const onGenderChange = (value: string) => {
         switch (value) {
@@ -52,29 +83,60 @@ const Publish = () => {
         }
     };
 
-    // 提交表单
-    const onFinish = (values: any) => {
-        if (imageList.length !== imgValue) {
-            return message.warning('封面类型和图片数量不匹配')
-        }
-        console.log(values);
-        // 1. 按照接口文档的格式处理收集到的表单数据
-        const {title,content,channel_id} = values;
-        const reqData = {
-            title,
-            content,
-            cover:{
-                type:imgValue,
-                images:imageList.map(item =>item.response.data.url) // 图片列表
-            },
-            channel_id,
+    // 处理封面类型变化
+    const onCoverTypeChange = (e: RadioChangeEvent) => {
+        const type = e.target.value;
+        setCurrentCoverType(type);
+        // 同时更新表单中的 type 字段
+        form.setFieldsValue({ type });
 
+        // 如果切换到无图，清空图片列表
+        if (type === 0) {
+            setImageList([]);
         }
-        // 2. 调用接口提交
-        createArticleAPI(reqData)
     };
 
-    const [value, setValue] = useState('');
+    // 提交表单
+    const onFinish = async (values: ArticleFormData) => {
+        console.log('表单数据:', values);
+
+        // 获取表单中的 type 值
+        const { title, content, channel_id, type } = values;
+
+        // 验证封面类型和图片数量
+        if (type > 0 && imageList.length !== type) {
+            messageApi.warning('封面类型和图片数量不匹配');
+            return;
+        }
+
+        // 处理数据
+        const reqData: CreateArticleRequest = {
+            title,
+            content,
+            cover: {
+                type: type,
+                images: type === 0 ? [] : imageList.map(item =>
+                    item.response?.data?.url || item.url || ''
+                ).filter(url => url !== '')
+            },
+            channel_id,
+        };
+
+        console.log('提交数据:', reqData);
+
+        try {
+            await createArticleAPI(reqData);
+            messageApi.success('创建成功');
+
+            // 重置表单和状态
+            form.resetFields();
+            setImageList([]);
+            setCurrentCoverType(0);
+        } catch (error) {
+            console.error('创建失败:', error);
+            messageApi.error('创建失败，请重试');
+        }
+    };
 
     const modules = {
         toolbar: [
@@ -93,35 +155,27 @@ const Publish = () => {
         'link', 'image'
     ];
 
-    const [imgValue, setImgValue] = useState(0);
-
-    // 切换图片封面类型
-    const onImageChange = (e: RadioChangeEvent) => {
-        setImgValue(e.target.value);
-    };
-
     type FileType = Parameters<GetProp<UploadProps, 'beforeUpload'>>[0];
 
     const beforeUpload = (file: FileType) => {
         const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
         if (!isJpgOrPng) {
-            message.error('You can only upload JPG/PNG file!');
+            message.error('只能上传 JPG/PNG 文件!');
         }
         const isLt2M = file.size / 1024 / 1024 < 2;
         if (!isLt2M) {
-            message.error('Image must smaller than 2MB!');
+            message.error('图片必须小于 2MB!');
         }
         return isJpgOrPng && isLt2M;
     };
 
-
     const [loading, setLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState<string>();
-    const [imageList, setImageList] = useState([])
+    const [imageList, setImageList] = useState<UploadFile[]>([]);
 
-    const handleFileChange: UploadProps['onChange'] = (value) => {
-        console.log('正在上传中',value);
-        setImageList(value.fileList)
+    const handleFileChange: UploadProps['onChange'] = (info) => {
+        console.log('正在上传中', info);
+        setImageList(info.fileList as UploadFile[]);
     };
 
     const uploadButton = (
@@ -133,6 +187,7 @@ const Publish = () => {
 
     return (
         <div>
+            {contextHolder}
 
             <Row justify="center">
                 <Col xs={24} sm={22} md={20} lg={18} xl={16}>
@@ -142,16 +197,16 @@ const Publish = () => {
                                 {
                                     title: '创建文章',
                                 },
-
                             ]}
                         />
-                    }  style={{ width: '100%',minHeight:'500px' }}>
+                    } style={{ width: '100%', minHeight: '500px' }}>
                         <Form
                             {...layout}
                             form={form}
                             name="control-hooks"
                             onFinish={onFinish}
                             style={{ maxWidth: 600 }}
+                            initialValues={{ type: 0 }}
                         >
                             <Form.Item name="title" label="标题" rules={[{ required: true }]}>
                                 <Input />
@@ -159,21 +214,18 @@ const Publish = () => {
                             <Form.Item name="channel_id" label="频道" rules={[{ required: true }]}>
                                 <Select
                                     allowClear
-                                    placeholder="Select a option and change input text above"
+                                    placeholder="请选择频道"
                                     onChange={onGenderChange}
-                                    options={channelList.map(channel => (
-                                        {
-                                            label: channel.name,
-                                            value: channel.id,
-                                        }
-                                    ))}
+                                    options={channelList.map(channel => ({
+                                        label: channel.name,
+                                        value: channel.id,
+                                    }))}
                                 />
                             </Form.Item>
 
                             <Form.Item name="type" label="封面">
                                 <Radio.Group
-                                    onChange={onImageChange}
-                                    value={imgValue}
+                                    onChange={onCoverTypeChange}
                                     options={[
                                         {
                                             value: 0,
@@ -190,32 +242,34 @@ const Publish = () => {
                                     ]}
                                 />
 
-                                <div style={{height:20}}></div>
+                                <div style={{ height: 20 }}></div>
 
-                                {imgValue >0  && <Upload
-                                    name="image"
-                                    listType="picture-card"
-                                    className="avatar-uploader"
-                                    showUploadList={true}
-                                    action="http://127.0.0.1:8001/v1/upload"
-                                    beforeUpload={beforeUpload}
-                                    onChange={handleFileChange}
-                                    maxCount={imgValue}
-                                >
-                                    {imageUrl ? (
-                                        <img draggable={false} src={imageUrl} alt="avatar" style={{ width: '100%' }} />
-                                    ) : (
-                                        uploadButton
-                                    )}
-                                </Upload>}
+                                {/* 直接根据 currentCoverType 状态显示上传组件 */}
+                                {currentCoverType > 0 && (
+                                    <Upload
+                                        name="image"
+                                        listType="picture-card"
+                                        className="avatar-uploader"
+                                        showUploadList={true}
+                                        action="http://127.0.0.1:8001/v1/upload"
+                                        beforeUpload={beforeUpload}
+                                        onChange={handleFileChange}
+                                        maxCount={currentCoverType}
+                                        fileList={imageList}
+                                    >
+                                        {imageList.length >= currentCoverType ? null : uploadButton}
+                                    </Upload>
+                                )}
                             </Form.Item>
 
-                            <Form.Item label="内容" name="content" rules={[{ required: true ,message:'请输入文章内容'}]}>
+                            <Form.Item
+                                label="内容"
+                                name="content"
+                                rules={[{ required: true, message: '请输入文章内容' }]}
+                            >
                                 <ReactQuill
                                     className="custom-quill"
                                     theme="snow"
-                                    value={value}
-                                    onChange={setValue}
                                     modules={modules}
                                     formats={formats}
                                 />
@@ -226,18 +280,14 @@ const Publish = () => {
                                     <Button type="primary" htmlType="submit">
                                         发布文章
                                     </Button>
-
                                 </Space>
                             </Form.Item>
                         </Form>
                     </Card>
                 </Col>
             </Row>
-
-
-
         </div>
     )
 }
 
-export default Publish
+export default Publish;
