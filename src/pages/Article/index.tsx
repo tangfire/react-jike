@@ -2,49 +2,25 @@ import React, {useEffect, useState} from 'react';
 import {
     Button,
     Card,
-
     Col, DatePicker,
-    Flex,
     Form,
-    type FormProps,
-
+    type FormProps, Popconfirm,
     Radio,
-    type RadioChangeEvent,
+
     Row, Select,
     Space, Table, Tag, Tooltip
 } from 'antd';
 import Column from "antd/es/table/Column";
 import { EditOutlined,DeleteOutlined } from '@ant-design/icons';
 import {useChannel} from "../../hooks/useChannel.tsx";
-import {getArticleListAPI} from "../../apis/articles.jsx";
-import dayjs from  "dayjs";
-
+import {delArticleAPI, getArticleListAPI} from "../../apis/articles.jsx";
+import dayjs from "dayjs";
+import {useNavigate} from "react-router-dom";
 
 const Article: React.FC = () => {
+    const navigate = useNavigate();
     const {channelList} = useChannel();
-
-    type FieldType = {
-        status?: string;
-        channel_id?: string;
-        time?: string;
-    };
-
-    const onFinish: FormProps<FieldType>['onFinish'] = (values) => {
-        console.log('Success:', values);
-    };
-
-    const onFinishFailed: FormProps<FieldType>['onFinishFailed'] = (errorInfo) => {
-        console.log('Failed:', errorInfo);
-    };
-
-    const [value, setValue] = useState(1);
-
-    const onChange = (e: RadioChangeEvent) => {
-        setValue(e.target.value);
-    };
-    const handleChange = (value: string) => {
-        console.log(`selected ${value}`);
-    };
+    const { RangePicker } = DatePicker;
 
     // 状态映射
     const statusMap = {
@@ -53,170 +29,200 @@ const Article: React.FC = () => {
         '3': { text: '已封禁', color: 'error' }
     };
 
-    const { RangePicker } = DatePicker;
+    const [list, setList] = useState([]);
+    const [count, setCount] = useState(0);
 
-    const [count, setCount] = useState(0)
-    const [list, setList] = useState([])
-    useEffect(() => {
-        async function getList(){
-            const res = await getArticleListAPI()
-            const formList = res.data.data.list.map(item =>(
-                {
-                    ...item,
-                    key: item.id,
-                    // 格式化时间
-                    created_at: dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss'),
-                    // 处理封面图片显示
-                    cover_images: item.cover_images && item.cover_images.length > 0?item.cover_images.length : ['无封面'],
-                }
-            ));
-            setList(formList)
-            setCount(res.data.data.total)
-        }
-        getList();
-
-    },[])
-
-    // 筛选功能
-    // 1. 准备参数
+    // 筛选功能参数
     const [reqData, setReqData] = useState({
+        id:0,
         status: '',
         channel_id: '',
-        begin_pudata:'',
-        end_pudata:'',
+        begin_pubdate: '',  // 修正拼写：pubdata → pubdate
+        end_pubdate: '',    // 修正拼写：pubdata → pubdate
         page: 1,
-        per_page: 4,
-    })
+        page_size: 10,
+    });
 
-    // 2. 获取当前的筛选数据
+    useEffect(() => {
+        async function getList(){
+            const res = await getArticleListAPI(reqData);
+            const formList = res.data.data.list.map(item => ({
+                ...item,
+                key: item.id,
+                created_at: dayjs(item.created_at).format('YYYY-MM-DD HH:mm:ss'),
+                cover_images: item.cover_images && item.cover_images.length > 0 ? item.cover_images.length : ['无封面'],
+            }));
+            setList(formList);
+            setCount(res.data.data.total);
+        }
+        getList();
+    }, [reqData]);
 
+    // 修复后的 onFinish 函数
+    const onFinish: FormProps['onFinish'] = (formValue) => {
+        console.log('表单提交数据:', formValue);
 
-    return(
-    <Row gutter={[16, 24]}>
-        <Col className="gutter-row" span={24}>
-            <Card style={{ width: '80%',margin: '20px auto' }}>
-                <Form
-                    name="basic"
-                    labelCol={{ span: 8 }}
-                    wrapperCol={{ span: 16 }}
-                    style={{ maxWidth: 600 ,marginTop: '20px' }}
-                    onFinish={onFinish}
-                    onFinishFailed={onFinishFailed}
-                    autoComplete="off"
-                >
-                    <Form.Item<FieldType>
-                        label="状态:"
-                        name="status"
-                        rules={[{  message: 'Please input your username!' }]}
-                    >
-                        <Radio.Group
-                            onChange={onChange}
-                            value={value}
-                            options={[
-                                {
-                                    value: 1,
-                                    className: 'option-1',
-                                    label: (
-                                        <Flex gap="small" justify="center" align="center" vertical>
+        // 处理日期范围
+        let begin_pubdate = '';
+        let end_pubdate = '';
 
-                                            全部
-                                        </Flex>
-                                    ),
-                                },
-                                {
-                                    value: 2,
-                                    className: 'option-2',
-                                    label: (
-                                        <Flex gap="small" justify="center" align="center" vertical>
+        if (formValue.time && formValue.time.length === 2) {
+            begin_pubdate = formValue.time[0].format('YYYY-MM-DD');
+            end_pubdate = formValue.time[1].format('YYYY-MM-DD');
+        }
 
-                                            已发布
-                                        </Flex>
-                                    ),
-                                },
-                                {
-                                    value: 3,
-                                    className: 'option-3',
-                                    label: (
-                                        <Flex gap="small" justify="center" align="center" vertical>
+        setReqData({
+            ...reqData,
+            id: formValue.id,
+            channel_id: formValue.channel_id,
+            status: formValue.status,
+            begin_pubdate,
+            end_pubdate,
+            page: 1, // 筛选时重置到第一页
+            page_size: 100,
+        });
+    };
 
-                                            已封禁
-                                        </Flex>
-                                    ),
-                                },
-                            ]}
-                        />
-                    </Form.Item>
+    const onFinishFailed: FormProps['onFinishFailed'] = (errorInfo) => {
+        console.log('表单提交失败:', errorInfo);
+    };
 
-                    <Form.Item<FieldType>
-                        label="频道"
-                        name="channel_id"
-                    >
-                        <Select
-                            style={{ width: 120 }}
-                            onChange={handleChange}
-                            options={channelList.map(item => ({key:item.id ,value: item.id,label: item.name }))}
-                        />
-                    </Form.Item>
+    const deleteConfirm = async (data) => {
+        console.log("删除点击了",data);
+        await delArticleAPI(data.id)
+        setReqData({
+            ...reqData,
+        })
+    }
 
-                    <Form.Item<FieldType> label='日期' name="time" valuePropName="checked" >
-                        <RangePicker />
-                    </Form.Item>
+    const deleteCancel = () => {
 
-                    <Form.Item label={null}>
-                        <Button type="primary" htmlType="submit">
-                            筛选
-                        </Button>
-                    </Form.Item>
-                </Form>
-            </Card>
-        </Col>
-        <Col className="gutter-row" span={24}>
-            <Card title={`根据筛选条件查询到${count}条数据`}  style={{ width: '80%' ,margin: '0 auto' }}>
-                <Table dataSource={list}>
-                    <Column title="封面" dataIndex="cover_images" key="age" />
-                    <Column title="标题" dataIndex="title" key="address" />
-                    <Column
-                        title="状态"
-                        dataIndex="status"
-                        key="status"
-                        render={(status) => {
-                            // @ts-ignore
-                            const statusInfo = statusMap[status];
-                            return (
-                                <Tag color={statusInfo?.color || 'default'}>
-                                    {statusInfo?.text || '未知'}
-                                </Tag>
-                            );
+    }
+
+    return (
+        <Row gutter={[16, 24]}>
+            <Col className="gutter-row" span={24}>
+                <Card style={{ width: '80%', margin: '20px auto' }}>
+                    <Form
+                        name="basic"
+                        labelCol={{ span: 8 }}
+                        wrapperCol={{ span: 16 }}
+                        style={{ maxWidth: 600, marginTop: '20px' }}
+                        onFinish={onFinish}
+                        onFinishFailed={onFinishFailed}
+                        autoComplete="off"
+                        initialValues={{
+                            status: '1' // 设置默认值
                         }}
-                    />
-                    <Column title="发布时间" dataIndex="created_at" key="time" />
-                    <Column title="阅读数" dataIndex="view_count" key="view_count" />
-                    <Column title="评论数" dataIndex="comment_count" key="comment_count" />
-                    <Column title="点赞数" dataIndex="like_count" key="like_count" />
-                    <Column
-                        title="Action"
-                        key="action"
-                        render={(_: any) => (
-                            <Space size="middle">
-                                <Tooltip title="编辑">
-                                    <Button type="primary" shape="circle" icon={<EditOutlined />} />
-                                </Tooltip>
-                                <Tooltip title="禁用">
-                                <Button type="primary" shape="circle" icon={<DeleteOutlined />}>
-                                </Button>
-                                </Tooltip>
-                            </Space>
-                        )}
-                    />
-                </Table>
-            </Card>
-        </Col>
+                    >
+                        {/* 状态选择器 - 移除独立的 value 和 onChange */}
+                        <Form.Item label="状态:" name="status">
+                            <Radio.Group>
+                                <Radio value={1}>草稿</Radio>
+                                <Radio value={2}>已发布</Radio>
+                                <Radio value={3}>已封禁</Radio>
+                            </Radio.Group>
+                        </Form.Item>
 
+                        {/* 频道选择器 */}
+                        <Form.Item label="频道" name="channel_id">
+                            <Select
+                                style={{ width: 120 }}
+                                placeholder="请选择频道"
+                                allowClear
+                            >
+                                {channelList.map(item => (
+                                    <Select.Option key={item.id} value={item.id}>
+                                        {item.name}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
 
-    </Row>
+                        {/* 日期范围选择器 - 修正字段名 */}
+                        <Form.Item label="日期" name="time">
+                            <RangePicker />
+                        </Form.Item>
 
+                        <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
+                            <Button type="primary" htmlType="submit">
+                                筛选
+                            </Button>
+                        </Form.Item>
+                    </Form>
+                </Card>
+            </Col>
 
-);
+            <Col className="gutter-row" span={24}>
+                <Card title={`根据筛选条件查询到${count}条数据`} style={{ width: '80%', margin: '0 auto' }}>
+                    {/* 表格内容保持不变 */}
+                    <Table dataSource={list}
+                           pagination={{
+                               current: reqData.page,
+                               pageSize: reqData.page_size,
+                               total: count,
+                               showSizeChanger: true,
+                               showQuickJumper: true,
+                               pageSizeOptions: ['10', '20', '50', '100'],
+                               onChange: (page, pageSize) => {
+                                   setReqData(prev => ({
+                                       ...prev,
+                                       page: page,
+                                       page_size: pageSize || prev.page_size
+                                   }));
+                               },
+                               showTotal: (total, range) =>
+                                   `第 ${range[0]}-${range[1]} 条，共 ${total} 条记录`
+                           }}>
+                        <Column title="id" dataIndex="id" key="id" />
+                        <Column title="封面" dataIndex="cover_images" key="cover_images" />
+                        <Column title="标题" dataIndex="title" key="title" />
+                        <Column
+                            title="状态"
+                            dataIndex="status"
+                            key="status"
+                            render={(status) => {
+                                const statusInfo = statusMap[status];
+                                return (
+                                    <Tag color={statusInfo?.color || 'default'}>
+                                        {statusInfo?.text || '未知'}
+                                    </Tag>
+                                );
+                            }}
+                        />
+                        <Column title="发布时间" dataIndex="created_at" key="created_at" />
+                        <Column title="阅读数" dataIndex="view_count" key="view_count" />
+                        <Column title="评论数" dataIndex="comment_count" key="comment_count" />
+                        <Column title="点赞数" dataIndex="like_count" key="like_count" />
+                        <Column
+                            title="操作"
+                            key="action"
+                            render={data => (
+                                <Space size="middle">
+                                    <Tooltip title="编辑">
+                                        <Button type="primary" shape="circle" icon={<EditOutlined />} onClick={() => navigate(`/publish?id=${data.id}`)} />
+                                    </Tooltip>
+                                    <Tooltip title="删除">
+                                        <Popconfirm
+                                            title="删除文章"
+                                            description="确认要删除当前文章吗?"
+                                            onConfirm={()=>deleteConfirm(data)}
+                                            onCancel={deleteCancel}
+                                            okText="Yes"
+                                            cancelText="No"
+                                        >
+                                            <Button type="primary" danger shape="circle" icon={<DeleteOutlined />} />
+                                        </Popconfirm>
+
+                                    </Tooltip>
+                                </Space>
+                            )}
+                        />
+                    </Table>
+                </Card>
+            </Col>
+        </Row>
+    );
 }
 
 export default Article;

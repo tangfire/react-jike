@@ -18,6 +18,16 @@ export function createArticleAPI(data) {
     })
 }
 
+// 更新文章表单
+export function updateArticleAPI(data) {
+    return request({
+        url: `/mp/articles/${data.id}?draft=false`,
+        method: 'PUT',
+        data
+    })
+}
+
+
 // 3. 获取文章列表
 export function getArticleListAPI(params){
     return request({
@@ -26,3 +36,21 @@ export function getArticleListAPI(params){
         params
     })
 }
+
+// 删除文章
+export function delArticleAPI(id) {
+    return request({
+        url: `/mp/articles/${id}`,
+        method: 'DELETE',
+    })
+}
+
+// 获取文章详情
+export function getArticleById(id){
+    return request({
+        url: `/mp/articles/${id}`,
+    })
+}
+
+
+

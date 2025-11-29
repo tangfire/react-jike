@@ -18,8 +18,10 @@ import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import './index.scss'
 
 import {useChannel} from "../../hooks/useChannel.tsx";
-import { useState} from "react";
+import {useEffect, useState} from "react";
 import {createArticleAPI} from '@/apis/articles.jsx'
+import {useSearchParams} from "react-router";
+import {getArticleById, updateArticleAPI} from "../../apis/articles";
 
 const layout = {
     labelCol: { span: 8 },
@@ -62,7 +64,7 @@ interface UploadFile {
 const Publish = () => {
     // 获取频道列表
     const {channelList} = useChannel();
-    const [form] = Form.useForm();
+
     const [messageApi, contextHolder] = message.useMessage();
 
     // 添加状态来跟踪当前选择的封面类型
@@ -96,47 +98,7 @@ const Publish = () => {
         }
     };
 
-    // 提交表单
-    const onFinish = async (values: ArticleFormData) => {
-        console.log('表单数据:', values);
 
-        // 获取表单中的 type 值
-        const { title, content, channel_id, type } = values;
-
-        // 验证封面类型和图片数量
-        if (type > 0 && imageList.length !== type) {
-            messageApi.warning('封面类型和图片数量不匹配');
-            return;
-        }
-
-        // 处理数据
-        const reqData: CreateArticleRequest = {
-            title,
-            content,
-            cover: {
-                type: type,
-                images: type === 0 ? [] : imageList.map(item =>
-                    item.response?.data?.url || item.url || ''
-                ).filter(url => url !== '')
-            },
-            channel_id,
-        };
-
-        console.log('提交数据:', reqData);
-
-        try {
-            await createArticleAPI(reqData);
-            messageApi.success('创建成功');
-
-            // 重置表单和状态
-            form.resetFields();
-            setImageList([]);
-            setCurrentCoverType(0);
-        } catch (error) {
-            console.error('创建失败:', error);
-            messageApi.error('创建失败，请重试');
-        }
-    };
 
     const modules = {
         toolbar: [
@@ -185,6 +147,97 @@ const Publish = () => {
         </button>
     );
 
+    // 回填数据
+    const [searchParams] = useSearchParams();
+    const articleId = searchParams.get('id');
+    // 获取实例
+    const [form] = Form.useForm();
+    console.log(articleId);
+    useEffect(() => {
+        async function getArticleDetail(){
+            const res = await getArticleById(articleId);
+            const articleData = res.data.data;
+
+            console.log('获取到的文章数据:', articleData);
+            console.log('cover_type 值:', articleData.cover_type);
+            console.log('cover_type 类型:', typeof articleData.cover_type);
+
+            // 设置表单值
+            form.setFieldsValue({
+                title: articleData.title,
+                content: articleData.content,
+                channel_id: articleData.channel_id,
+                type: articleData.cover_type,
+            });
+
+            // 更新封面类型状态
+            setCurrentCoverType(articleData.cover_type);
+            console.log('设置后的 currentCoverType:', articleData.cover_type);
+
+            // 回填图片列表
+            if (articleData.cover_type > 0 && articleData.cover_images) {
+                const coverImages = articleData.cover_images.map((url: string, index: number) => ({
+                    uid: `-${index}`,
+                    status: 'done' as const,
+                    url: url,
+                    name: url.split('/').pop() || `image-${index}`,
+                }));
+                setImageList(coverImages);
+            }
+        }
+
+        if (articleId) {
+            getArticleDetail();
+        }
+    }, [articleId, form]);
+
+    // 提交表单
+    const onFinish = async (values: ArticleFormData) => {
+        console.log('表单数据:', values);
+
+        // 获取表单中的 type 值
+        const { title, content, channel_id, type } = values;
+
+        // 验证封面类型和图片数量
+        if (type > 0 && imageList.length !== type) {
+            messageApi.warning('封面类型和图片数量不匹配');
+            return;
+        }
+
+        // 处理数据
+        const reqData: CreateArticleRequest = {
+
+            title,
+            content,
+            cover: {
+                type: type,
+                images: type === 0 ? [] : imageList.map(item =>
+                    item.response?.data?.url || item.url || ''
+                ).filter(url => url !== '')
+            },
+            channel_id,
+        };
+
+        console.log('提交数据:', reqData);
+
+        try {
+            if (articleId){
+                // 更新文章：添加 id 到请求数据中
+                await updateArticleAPI({ ...reqData, id: articleId });
+            }else{
+                await createArticleAPI(reqData);
+                messageApi.success('创建成功');
+            }
+            // 重置表单和状态
+            form.resetFields();
+            setImageList([]);
+            setCurrentCoverType(0);
+        } catch (error) {
+            console.error('创建失败:', error);
+            messageApi.error('创建失败，请重试');
+        }
+    };
+
     return (
         <div>
             {contextHolder}
@@ -206,7 +259,6 @@ const Publish = () => {
                             name="control-hooks"
                             onFinish={onFinish}
                             style={{ maxWidth: 600 }}
-                            initialValues={{ type: 0 }}
                         >
                             <Form.Item name="title" label="标题" rules={[{ required: true }]}>
                                 <Input />

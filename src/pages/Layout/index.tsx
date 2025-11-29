@@ -12,6 +12,7 @@ import {useDispatch, useSelector} from "react-redux";
 // @ts-ignore
 import {fetchUserInfo,clearUserInfo} from '@/store/modules/user'
 import {Header} from "antd/es/layout/layout";
+import {useSearchParams} from "react-router";
 
 const {  Content, Sider } = Layout;
 
@@ -73,6 +74,8 @@ const MyLayout: React.FC = () => {
     // @ts-ignore
     const name = useSelector(state => state.user.userInfo.nickname);
 
+    const [params] = useSearchParams();
+    const id = params.get("id");
 
     const confirm: PopconfirmProps['onConfirm'] = () => {
        dispatch(clearUserInfo());
@@ -83,7 +86,7 @@ const MyLayout: React.FC = () => {
         <Layout style={{ minHeight: '100vh' }}>
             <Sider collapsible collapsed={collapsed} onCollapse={(value) => setCollapsed(value)}>
                 <div className="demo-logo-vertical" />
-                <Menu theme="dark" defaultSelectedKeys={[selectedkey]} mode="inline" items={items} onClick={onMenuClick} />
+                <Menu theme="dark" selectedKeys={[selectedkey]} mode="inline" items={items} onClick={onMenuClick} />
             </Sider>
             <Layout>
                 <Header style={{
@@ -104,7 +107,9 @@ const MyLayout: React.FC = () => {
                     </Popconfirm>
                 </Header>
                 <Content style={{margin: '0 16px' }}>
-                    <Breadcrumb style={{ margin: '16px 0' }} items={[{ title:menuItemMap.get(menuItem) }]} />
+                    <Breadcrumb style={{ margin: '16px 0' }} items={[{
+                        title: (id && selectedkey === '/publish') ? 'update' : menuItemMap.get(menuItem)
+                    }]} />
                     <div
                         style={{
                             padding: '16px', // 在移动端减少内边距

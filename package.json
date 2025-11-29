@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.10.1",
@@ -22,7 +22,8 @@
     "react-quill": "^2.0.0",
     "react-redux": "^9.2.0",
     "react-router": "^7.9.6",
-    "react-router-dom": "^7.9.6"
+    "react-router-dom": "^7.9.6",
+    "source-map-explorer": "^2.5.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
